@@ -1,0 +1,14 @@
+spring.liquibase:
+  url: "jdbc:postgresql://pgdb/ribbontek"
+  user: "postgres"
+  password: "postgres"
+  change-log: "liquibase/db.changelog-master.xml"
+  drop-first: false
+
+spring.datasource:
+  url: "jdbc:postgresql://pgdb/ribbontek"
+  username: "servicediscovery"
+  password: "servicediscovery"
+  driver-class-name: "org.postgresql.Driver"
+
+spring.cloud.consul.host: consul

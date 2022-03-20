@@ -1,0 +1,38 @@
+spring.application.name: template-api
+
+springdoc.api-docs.path: /api-docs
+springdoc.swagger-ui.enabled: true
+redoc.enabled: true
+
+spring.liquibase:
+  url: "jdbc:postgresql://localhost:5432/ribbontek"
+  user: "postgres"
+  password: "postgres"
+  change-log: "liquibase/db.changelog-master.xml"
+  drop-first: false
+
+spring.datasource:
+  url: "jdbc:postgresql://localhost:5432/ribbontek"
+  username: "template_api"
+  password: "template_api"
+  driver-class-name: "org.postgresql.Driver"
+
+spring.jpa.hibernate.ddl-auto: none
+spring.jpa.show-sql: true
+management.endpoint.health.show-details: always
+
+spring.cloud:
+  service-registry.auto-registration.enabled: true
+  consul:
+    enabled: true
+    host: localhost
+    port: 8500
+    discovery:
+      prefer-ip-address: true
+      lifecycle.enabled: true
+      catalogServicesWatchDelay: 5000
+      health-check-path: ${server.servlet.context-path:}/actuator/health
+      health-check-interval: 15s
+      health-check-timeout: 90s
+      health-check-critical-timeout: 3m
+

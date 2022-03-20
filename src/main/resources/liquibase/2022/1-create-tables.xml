@@ -1,0 +1,175 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/liquibase/2022/1-create-tables.xml"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="AppDefaultScripts" author="joel.mouritz">
+        <sql dbms="postgresql">
+            create extension if not exists "uuid-ossp";
+        </sql>
+        <sql dbms="postgresql">
+            create schema if not exists ribbontek;
+            grant usage on schema ribbontek to template_api;
+            drop type if exists event_type_enum;
+            create type event_type_enum as enum ('CREATE', 'UPDATE', 'DELETE');
+            drop type if exists quest_level_enum;
+            create type quest_level_enum as enum ('EASY', 'MEDIUM', 'HARD', 'INSANE');
+            drop type if exists quest_status_enum;
+            create type quest_status_enum as enum ('INACTIVE', 'ACTIVE', 'STARTED', 'IN_PROGRESS', 'COMPLETED');
+        </sql>
+        <rollback>
+            <sql dbms="postgresql">
+                drop schema ribbontek;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="CreateTables" author="joel.mouritz">
+        <!-- EventStoreEntity -->
+        <createTable schemaName="ribbontek" tableName="event_store">
+            <column name="_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ribbontek__event_store"/>
+            </column>
+            <column name="entity_uuid" type="${uuid_type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_type" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="old" type="jsonb"/>
+            <column name="new" type="jsonb"/>
+            <column name="event_type" type="event_type_enum">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_utc" type="timestamp(6)" defaultValueComputed="${datetime.current}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="ix_event_store" schemaName="ribbontek" tableName="event_store">
+            <column name="entity_uuid"/>
+            <column name="entity_type"/>
+            <column name="event_type"/>
+        </createIndex>
+
+        <!-- QuestEntity -->
+        <createTable schemaName="ribbontek" tableName="quest">
+            <column name="_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ribbontek__quest"/>
+            </column>
+            <column name="quest_id" type="${uuid_type}">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="varchar(255)"/>
+            <column name="level" type="quest_level_enum" defaultValue="EASY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="quest_status_enum" defaultValue="INACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_utc" type="timestamp(6)" defaultValueComputed="${datetime.current}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_utc" type="timestamp(6)" defaultValueComputed="${datetime.current}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" defaultValueNumeric="0" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="ix_quest" schemaName="ribbontek" tableName="quest">
+            <column name="quest_id"/>
+            <column name="status"/>
+            <column name="level"/>
+            <column name="version"/>
+            <column name="deleted"/>
+        </createIndex>
+
+        <!-- MapEntity -->
+        <createTable schemaName="ribbontek" tableName="map">
+            <column name="_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ribbontek__map"/>
+            </column>
+            <column name="map_id" type="${uuid_type}">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="url_location" type="varchar(255)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_utc" type="timestamp(6)" defaultValueComputed="${datetime.current}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_utc" type="timestamp(6)" defaultValueComputed="${datetime.current}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" defaultValueNumeric="0" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="ix_map" schemaName="ribbontek" tableName="map">
+            <column name="map_id"/>
+            <column name="version"/>
+            <column name="deleted"/>
+        </createIndex>
+
+        <!-- ManyToMany Mapping Table -->
+        <createTable schemaName="ribbontek" tableName="quest_to_map">
+            <column name="quest_to_map_id" type="${uuid_type}" defaultValueComputed="${uuid_function}">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="pk_application__quest_to_map"/>
+            </column>
+            <column name="quest_id" type="${uuid_type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="map_id" type="${uuid_type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_quest__quest_to_map__quest"
+                baseTableSchemaName="ribbontek" baseTableName="quest_to_map" baseColumnNames="quest_id"
+                referencedTableSchemaName="ribbontek" referencedTableName="quest" referencedColumnNames="quest_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_quest__quest_to_map__map"
+                baseTableSchemaName="ribbontek" baseTableName="quest_to_map" baseColumnNames="map_id"
+                referencedTableSchemaName="ribbontek" referencedTableName="map" referencedColumnNames="map_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <createView viewName="vw_quest" replaceIfExists="true" schemaName="ribbontek" >SELECT * FROM ribbontek.quest where deleted = false;</createView>
+        <createView viewName="vw_map" replaceIfExists="true" schemaName="ribbontek" >SELECT * FROM ribbontek.map where deleted = false;</createView>
+
+    </changeSet>
+
+    <changeSet id="CreateTableViews" author="joel.mouritz">
+        <sql dbms="postgresql">
+            grant select, insert, update on ribbontek.vw_quest to template_api;
+            grant select, insert, update on ribbontek.vw_map to template_api;
+            grant select, insert, update, delete on ribbontek.quest_to_map to template_api;
+            grant select, insert, update, delete on ribbontek.event_store to template_api;
+        </sql>
+        <rollback>
+            <sql dbms="postgresql">
+                revoke all privileges on ribbontek.vw_quest from template_api;
+                revoke all privileges on ribbontek.vw_map from template_api;
+                revoke all privileges on ribbontek.quest_to_map from template_api;
+                revoke all privileges on ribbontek.event_store from template_api;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
